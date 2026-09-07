@@ -38,3 +38,11 @@ requestAnimationFrame(decorate);
 new ResizeObserver(decorate).observe(paybackPanel);
 document.querySelectorAll('[data-k],#start,#months,#traffic,#conversion,#check,#cogs,#marketing,#retail,#delivery').forEach(control=>control.addEventListener('input',()=>requestAnimationFrame(decorate)));
 </script>
+<script>
+const paybackCanvas=document.getElementById('payback');
+const paybackBars=document.createElement('div');paybackBars.id='paybackBars';paybackBars.style.cssText='height:220px;position:relative;background:#0a1728;border-radius:8px;overflow:hidden';
+paybackCanvas.replaceWith(paybackBars);
+function renderPaybackBars(){const rows=all(q()),max=Math.max(...rows.map(row=>Math.abs(row.ncf)),1);paybackBars.innerHTML='<div style="position:absolute;left:0;right:0;top:50%;border-top:1px solid #405875"></div>'+rows.map((row,index)=>{const width=100/rows.length,height=Math.max(2,Math.abs(row.ncf)/max*42),left=index*width+width*.15,color=row.ncf>=0?'#32d3a5':'#ff7d87',top=row.ncf>=0?50-height:50;return `<span title="Месяц ${index+1}: ${R(row.ncf)}" style="position:absolute;left:${left}%;width:${width*.7}%;top:${top}%;height:${height}%;background:${color};border-radius:3px 3px 0 0"></span>`}).join('')}
+renderPaybackBars();
+document.querySelectorAll('[data-k],#start,#months,#traffic,#conversion,#check,#cogs,#marketing,#retail,#delivery').forEach(control=>control.addEventListener('input',()=>requestAnimationFrame(renderPaybackBars)));
+</script>
