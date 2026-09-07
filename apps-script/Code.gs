@@ -1,6 +1,6 @@
 const SPREADSHEET_ID = '1zAdUCRtPPKxWDC8_Oclkne0ysFk0UA87HwALx3SDn5Q';
 
-function doGet() {
+function doGet(e) {
   const model = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Финмодель');
   const value = address => model.getRange(address).getValue();
   const number = address => Number(value(address)) || 0;
@@ -38,7 +38,15 @@ function doGet() {
     },
   };
 
+  const prefix = (e && e.parameter && e.parameter.prefix) || '';
+  if (prefix && !/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(prefix)) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: 'Invalid JSONP callback name' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const body = JSON.stringify(payload);
   return ContentService
-    .createTextOutput(JSON.stringify(payload))
-    .setMimeType(ContentService.MimeType.JSON);
+    .createTextOutput(prefix ? `${prefix}(${body});` : body)
+    .setMimeType(prefix ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
 }
