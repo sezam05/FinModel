@@ -34,4 +34,7 @@ function decorate(){
   const rows=all(q()),canvas=document.getElementById('payback'),ctx=canvas.getContext('2d'),w=canvas.width=canvas.clientWidth*devicePixelRatio,h=canvas.height=canvas.clientHeight*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);w=canvas.clientWidth;h=canvas.clientHeight;ctx.clearRect(0,0,w,h);const max=Math.max(...rows.map(x=>Math.abs(x.ncf)),1),zero=h/2;ctx.strokeStyle='#405875';ctx.beginPath();ctx.moveTo(0,zero);ctx.lineTo(w,zero);ctx.stroke();const gap=3,bw=Math.max(3,(w-gap*(rows.length+1))/rows.length);rows.forEach((row,i)=>{const bh=Math.abs(row.ncf)/max*(h*.42),x=gap+i*(bw+gap),y=row.ncf>=0?zero-bh:zero;ctx.fillStyle=row.ncf>=0?'#32d3a5':'#ff7d87';ctx.fillRect(x,y,bw,bh)});
 }
 const originalRender=render;render=function(){originalRender();decorate()};render();
+requestAnimationFrame(decorate);
+new ResizeObserver(decorate).observe(paybackPanel);
+document.querySelectorAll('[data-k],#start,#months,#traffic,#conversion,#check,#cogs,#marketing,#retail,#delivery').forEach(control=>control.addEventListener('input',()=>requestAnimationFrame(decorate)));
 </script>
