@@ -15,6 +15,33 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 </script>
 <script>
 window.addEventListener('load',()=>{
+  requestAnimationFrame(()=>{
+  const workspace=document.querySelector('#scenarios .scenario-workspace');
+  const comparison=workspace?.querySelector(':scope > .panel');
+  const variants=workspace?.querySelector('.scenario-variants');
+  const base=workspace?.querySelector('.scenario-base');
+  if(!workspace||!comparison||!variants||!base)return;
+
+  const sidebar=document.createElement('aside');
+  sidebar.className='scenario-sidebar';
+  const comparisonColumn=document.createElement('div');
+  comparisonColumn.className='scenario-comparison';
+  comparisonColumn.append(comparison);
+  sidebar.append(variants,base);
+  workspace.replaceChildren(comparisonColumn,sidebar);
+
+  const baseDetails=base.querySelector('details');
+  if(baseDetails)baseDetails.open=false;
+
+  const style=document.createElement('style');
+  style.textContent='.scenario-workspace{grid-template-columns:minmax(0,1fr) minmax(310px,365px);gap:16px;align-items:start}.scenario-comparison,.scenario-sidebar{min-width:0}.scenario-sidebar{display:grid;gap:14px;align-content:start}.scenario-comparison>.panel{height:max-content}.scenario-comparison .scenario-chart{height:310px}.scenario-comparison .scenario-results th,.scenario-comparison .scenario-results td{padding:8px 9px}.scenario-variants,.scenario-base{padding:14px}.scenario-variants h2{font-size:16px}.scenario-variants p{margin:3px 0 8px}.scenario-variants .scenario{margin-top:7px}.scenario-variants #sOut{margin-top:6px}.scenario-variants .scenario th,.scenario-variants .scenario td{padding:6px 5px;font-size:12px}.scenario-variants .scenario input{min-height:31px;padding:5px 6px;font-size:13px}.scenario-base details summary{display:flex;align-items:center;min-height:28px;font-size:14px}.scenario-base details:not([open]) summary{margin:0}.scenario-base details[open] summary{margin-bottom:10px}@media(max-width:1100px){.scenario-workspace{grid-template-columns:1fr}.scenario-sidebar{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.scenario-comparison .scenario-chart{height:300px}}@media(max-width:680px){.scenario-sidebar{grid-template-columns:1fr}.scenario-comparison .scenario-chart{height:250px}.scenario-variants,.scenario-base{padding:13px}}';
+  document.head.append(style);
+  requestAnimationFrame(()=>{renderBaseScenario();renderScenarioComparison()});
+  });
+});
+</script>
+<script>
+window.addEventListener('load',()=>{
   const scenarioLayoutStyle=document.createElement('style');
   scenarioLayoutStyle.textContent='.scenario-workspace{display:grid;gap:18px}.scenario-heading{display:flex;justify-content:space-between;gap:16px;align-items:start}.scenario-heading h2{font-size:22px}.scenario-heading p{max-width:720px;font-size:13px;line-height:1.45}.scenario-chart{width:100%;height:330px;display:block;border-radius:8px;background:#0a1728}.scenario-table-wrap{overflow:auto}.scenario-results{min-width:940px}.scenario-results th,.scenario-results td{padding:9px 10px;border-bottom:1px solid #2d4463;text-align:right;white-space:nowrap;font-size:12px}.scenario-results th{color:#9badc7}.scenario-results th:first-child,.scenario-results td:first-child{text-align:left}.scenario-results td:first-child{font-weight:750}.scenario-main{display:grid;grid-template-columns:minmax(330px,.85fr) minmax(480px,1.15fr);gap:18px;align-items:start}.scenario-base{height:max-content}.scenario-base details summary{cursor:pointer;font-weight:750;color:#dce9f7}.scenario-base details[open] summary{margin-bottom:12px}.scenario-variants{height:max-content}.scenario-variants h2{margin-bottom:3px}.scenario-variants .scenario{margin-top:12px}.scenario-variants #sOut{margin-top:10px}.dash .grid{align-items:start}.dash .grid>.panel{min-width:0}@media(max-width:980px){.scenario-main{grid-template-columns:1fr}.scenario-chart{height:290px}}@media(max-width:650px){.scenario-heading{display:block}.scenario-chart{height:250px}.scenario-base,.scenario-variants{padding:13px}.scenario-results th,.scenario-results td{padding:8px 7px}}';
   document.head.append(scenarioLayoutStyle);
