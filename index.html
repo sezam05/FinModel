@@ -15,6 +15,26 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 </script>
 <script>
 window.addEventListener('load',()=>{
+  requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const mobileStyle=document.createElement('style');
+    mobileStyle.textContent='@media(max-width:760px){body{font-size:16px}.shell{padding:16px 12px 28px}.top{display:block}.top h1{font-size:clamp(28px,9vw,36px);line-height:1.08;margin-top:7px}.top p{max-width:none;margin:12px 0 0;font-size:14px;line-height:1.45}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0}.tabs>span{grid-column:1/-1;width:100%;min-width:0}.tab{width:100%;min-height:44px;padding:9px 7px;font-size:14px;line-height:1.2;white-space:normal}.panel{padding:14px;border-radius:12px}.dash,.grid{gap:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.metric{padding:10px}.metric strong{font-size:18px;line-height:1.15}.metric span{font-size:12px;line-height:1.2}.inputs .group{padding:10px 0}.inputs .field{grid-template-columns:minmax(0,1fr) 132px;gap:8px}.inputs .slider-head{gap:8px}.inputs .slider-head input{flex-basis:100px;width:100px}.inputs .slider-value{gap:4px}.inputs .range-scale{font-size:10px;gap:3px}.inputs input,.inputs select,.scenario input,.sensitivity-control select{font-size:16px}.chart{height:250px}.cash-chart{height:280px}.payback-bars{height:290px}.chart-top{display:block}.chart-total{width:100%;min-width:0;margin-top:9px}.scenario-heading,.sensitivity-heading{display:block}.scenario-heading .note{margin-top:8px}.scenario-comparison .scenario-chart{height:260px}.scenario-table-wrap,.sensitivity-table-wrap,.table{overflow-x:auto;-webkit-overflow-scrolling:touch}.scenario-results{min-width:820px}.scenario-results th,.scenario-results td{padding:8px;font-size:12px}.scenario-top-row{gap:12px}.scenario-variants .scenario th,.scenario-variants .scenario td{padding:6px 4px}.scenario-base-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:7px 12px}.scenario-base-overview span{min-width:0;grid-template-columns:1fr;gap:2px;white-space:normal}.scenario-base-overview b{overflow-wrap:anywhere}.model{min-width:860px}.model th,.model td{padding:8px;font-size:12px}.note-page{gap:12px}.note-summary{gap:8px}.note-card{padding:12px}.note-card strong{font-size:18px}.note-grid{gap:12px}.note-actions{display:grid;grid-template-columns:1fr}.note-action{min-height:42px;font-size:14px}.note-table{min-width:560px}.note-section{overflow-x:auto}.sensitivity-title h2{font-size:20px}.sensitivity-title p{font-size:14px}.sensitivity-help-toggle{width:100%;min-height:42px;margin-top:10px}.sensitivity-steps{gap:8px}.sensitivity-step{min-height:0;padding:11px 32px 11px 11px;font-size:13px}.sensitivity-kpis{gap:8px}.sensitivity-kpi{padding:12px}.sensitivity-kpi strong{font-size:18px}.sensitivity-sections{gap:12px}.sensitivity-settings{gap:9px}.sensitivity-check{min-height:40px;font-size:13px}.sensitivity-curves{height:250px}.sensitivity-matrix{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}.sensitivity-matrix .sensitivity-cell{min-height:50px}.tornado-row{grid-template-columns:78px minmax(0,1fr) minmax(0,1fr);gap:4px}.tornado-value{display:none}.sensitivity-legend{flex-wrap:wrap;gap:7px 12px}.help-popover{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;max-width:none;z-index:80}.chart-tooltip{max-width:calc(100vw - 24px);font-size:12px}}@media(max-width:390px){.tabs{grid-template-columns:1fr}.tabs>span{grid-column:auto}.metrics{grid-template-columns:1fr 1fr}.metric strong{font-size:17px}.inputs .field{grid-template-columns:minmax(0,1fr) 118px}.inputs .slider-head input{flex-basis:90px;width:90px}.scenario-base-overview{grid-template-columns:1fr}.scenario-comparison .scenario-chart{height:235px}.chart{height:230px}.cash-chart{height:250px}.payback-bars{height:270px}}';
+    document.head.append(mobileStyle);
+
+    const touchTargets=['op','profit','cash','payback','scenarioCompareChart','sensitivityCurves'];
+    touchTargets.map(id=>document.getElementById(id)).filter(Boolean).forEach(target=>{
+      const show=event=>{const point=event.touches[0];target.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:point.clientX,clientY:point.clientY}));};
+      target.addEventListener('touchstart',show,{passive:true});
+      target.addEventListener('touchmove',show,{passive:true});
+      target.addEventListener('touchend',()=>target.dispatchEvent(new MouseEvent('mouseleave')),{passive:true});
+    });
+    render();
+    if(typeof renderPaybackBars==='function')renderPaybackBars();
+    if(typeof renderScenarioComparison==='function')renderScenarioComparison();
+  })));
+});
+</script>
+<script>
+window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const workspace=document.querySelector('#scenarios .scenario-workspace');
     const comparison=workspace?.querySelector('.scenario-comparison');
