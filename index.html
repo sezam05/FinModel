@@ -15,6 +15,44 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 </script>
 <script>
 window.addEventListener('load',()=>{
+  const scenarioLayoutStyle=document.createElement('style');
+  scenarioLayoutStyle.textContent='.scenario-workspace{display:grid;gap:18px}.scenario-heading{display:flex;justify-content:space-between;gap:16px;align-items:start}.scenario-heading h2{font-size:22px}.scenario-heading p{max-width:720px;font-size:13px;line-height:1.45}.scenario-chart{width:100%;height:330px;display:block;border-radius:8px;background:#0a1728}.scenario-table-wrap{overflow:auto}.scenario-results{min-width:940px}.scenario-results th,.scenario-results td{padding:9px 10px;border-bottom:1px solid #2d4463;text-align:right;white-space:nowrap;font-size:12px}.scenario-results th{color:#9badc7}.scenario-results th:first-child,.scenario-results td:first-child{text-align:left}.scenario-results td:first-child{font-weight:750}.scenario-main{display:grid;grid-template-columns:minmax(330px,.85fr) minmax(480px,1.15fr);gap:18px;align-items:start}.scenario-base{height:max-content}.scenario-base details summary{cursor:pointer;font-weight:750;color:#dce9f7}.scenario-base details[open] summary{margin-bottom:12px}.scenario-variants{height:max-content}.scenario-variants h2{margin-bottom:3px}.scenario-variants .scenario{margin-top:12px}.scenario-variants #sOut{margin-top:10px}.dash .grid{align-items:start}.dash .grid>.panel{min-width:0}@media(max-width:980px){.scenario-main{grid-template-columns:1fr}.scenario-chart{height:290px}}@media(max-width:650px){.scenario-heading{display:block}.scenario-chart{height:250px}.scenario-base,.scenario-variants{padding:13px}.scenario-results th,.scenario-results td{padding:8px 7px}}';
+  document.head.append(scenarioLayoutStyle);
+  const dashboardScenario=[...document.querySelectorAll('#dash .grid>.panel')].find(panel=>panel.querySelector('h2')&&panel.querySelector('h2').textContent==='Сценарии');
+  if(!dashboardScenario)return;
+  dashboardScenario.classList.add('scenario-variants');
+  dashboardScenario.querySelector('h2').textContent='Настройки вариантов';
+  dashboardScenario.querySelector('p').textContent='Отклонения драйверов от базового сценария и результаты расчета.';
+  scenarioView.innerHTML='<div class="scenario-workspace"><section class="panel"><div class="scenario-heading"><div><h2>Сценарный анализ</h2><p>Оптимистичный, базовый и пессимистичный варианты пересчитываются по полной логике финансовой модели. Наведите курсор на диаграмму для точных значений.</p></div><div class="note">Все значения - за месяц, кроме инвестиций, NPV, IRR и окупаемости.</div></div><canvas id="scenarioCompareChart" class="scenario-chart" aria-label="Сравнение сценариев"></canvas><div class="scenario-table-wrap"><table id="scenarioResults" class="scenario-results"><thead><tr><th>Сценарий</th><th>Выручка / мес.</th><th>EBITDA / мес.</th><th>Чистая прибыль / мес.</th><th>Инвестиции</th><th>NPV</th><th>IRR</th><th>Окупаемость</th></tr></thead><tbody></tbody></table></div></section><div class="scenario-main"><section class="panel scenario-base"><details open><summary>Базовый сценарий и исходные параметры</summary><p>Изменения применяются к дашборду, сценариям и отчетам. Единицы измерения указаны в таблице.</p><div class="table"><table class="scenario"><thead><tr><th>Параметр</th><th>Единица</th><th>Базовый сценарий</th></tr></thead><tbody id="baseInputs"></tbody></table></div><section id="baseSummary" class="metrics" style="margin-top:18px"></section><div id="baseCheck" class="note"></div></details></section><div id="scenarioVariantsTarget"></div></div></div>';
+  document.getElementById('scenarioVariantsTarget').append(dashboardScenario);
+  const originalBaseScenarioRender=renderBaseScenario;
+  function getScenarioModel(base,key){
+    const model={...base};D.forEach(([id],index)=>{const change=Number(document.querySelector('[data-k="'+key+'"][data-d="'+id+'"]').value)||0;model[id]=(id in model?model[id]:F[id])*(1+change/100)});return model;
+  }
+  function scenarioMetrics(base,key){
+    const model=getScenarioModel(base,key),rows=all(model),first=rows[0],rate=(1+model.discount)**(1/12)-1,need=Math.max(0,-Math.min(...rows.map(row=>row.cum))),npv=rows.reduce((sum,row,index)=>sum+row.ncf/(1+rate)**index,0),payback=rows.findIndex(row=>row.cum>=0),returnIrr=irr(rows.map(row=>row.ncf));
+    return {model,first,need,npv,payback:payback<0?null:payback+1,irr:returnIrr};
+  }
+  function scenarioCompact(value){const abs=Math.abs(value);if(abs>=1000000)return (value/1000000).toLocaleString('ru-RU',{maximumFractionDigits:1})+' млн';if(abs>=1000)return Math.round(value/1000).toLocaleString('ru-RU')+' тыс.';return nf.format(value)}
+  function renderScenarioComparison(){
+    const canvas=document.getElementById('scenarioCompareChart'),body=document.querySelector('#scenarioResults tbody');if(!canvas||!body)return;
+    const base=q(),definitions=[['o','Оптимистичный'],['b','Базовый'],['p','Пессимистичный']],data=definitions.map(([key,name])=>({key,name,...scenarioMetrics(base,key)}));
+    body.innerHTML=data.map(item=>'<tr><td>'+item.name+'</td><td>'+R(item.first.rev)+'</td><td class="'+(item.first.ebitda<0?'negative':'ok')+'">'+R(item.first.ebitda)+'</td><td class="'+(item.first.net<0?'negative':'ok')+'">'+R(item.first.net)+'</td><td class="negative">'+R(item.need)+'</td><td class="'+(item.npv<0?'negative':'ok')+'">'+R(item.npv)+'</td><td>'+(item.irr===null?'н.д.':P((1+item.irr)**12-1))+'</td><td>'+(!item.payback?'не окупается':item.payback+' мес.')+'</td></tr>').join('');
+    const dpr=devicePixelRatio,width=canvas.width=canvas.clientWidth*dpr,height=canvas.height=canvas.clientHeight*dpr,ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);const w=canvas.clientWidth,h=canvas.clientHeight,p={l:66,r:18,t:28,b:62},sets=[['Выручка / мес.','#7fd1af','rev'],['EBITDA / мес.','#8cc7dc','ebitda'],['Чистая прибыль / мес.','#adbdec','net']],values=data.flatMap(item=>sets.map(set=>item.first[set[2]])),lo=Math.min(0,...values),hi=Math.max(0,...values),span=hi-lo||1,Y=value=>p.t+(hi-value)/span*(h-p.t-p.b),groupWidth=(w-p.l-p.r)/data.length,barWidth=Math.min(54,groupWidth/4),zero=Y(0);
+    ctx.clearRect(0,0,w,h);ctx.font='12px system-ui';ctx.textBaseline='middle';
+    for(let i=0;i<=4;i++){const value=hi-span*i/4,y=Y(value);ctx.strokeStyle=Math.abs(value)<span/1000?'#8b9ab0':'#2d4057';ctx.lineWidth=Math.abs(value)<span/1000?1.3:1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#9badc7';ctx.textAlign='right';ctx.fillText(scenarioCompact(value),p.l-9,y)}
+    data.forEach((item,index)=>{const center=p.l+groupWidth*(index+.5);sets.forEach((set,setIndex)=>{const value=item.first[set[2]],x=center+(setIndex-1)*(barWidth+7)-barWidth/2,y=Y(value),top=value>=0?y:zero,barHeight=Math.max(2,Math.abs(zero-y));ctx.fillStyle=set[1];ctx.beginPath();ctx.roundRect(x,top,barWidth,barHeight,5);ctx.fill()});ctx.fillStyle='#b5c6db';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText(item.name,center,h-14)});
+    let legendX=p.l;ctx.textBaseline='middle';sets.forEach(set=>{ctx.fillStyle=set[1];ctx.fillRect(legendX,p.t-16,10,10);ctx.fillStyle='#dce8f5';ctx.textAlign='left';ctx.fillText(set[0],legendX+15,p.t-11);legendX+=ctx.measureText(set[0]).width+38});
+    let tip=document.getElementById('chartTip');if(!tip){tip=document.createElement('div');tip.id='chartTip';tip.className='chart-tooltip';document.body.append(tip)}canvas.onmousemove=event=>{const rect=canvas.getBoundingClientRect(),index=Math.max(0,Math.min(data.length-1,Math.floor((event.clientX-rect.left-p.l)/groupWidth))),item=data[index];tip.innerHTML='<b>'+item.name+'</b>'+sets.map(set=>'<br><span style="color:'+set[1]+'">●</span> '+set[0]+': <b>'+R(item.first[set[2]])+'</b>').join('');tip.style.display='block';tip.style.left=Math.min(event.clientX+14,innerWidth-250)+'px';tip.style.top=Math.min(event.clientY+14,innerHeight-140)+'px'};canvas.onmouseleave=()=>tip.style.display='none';
+  }
+  renderBaseScenario=function(){originalBaseScenarioRender();renderScenarioComparison()};
+  scenarioTab.addEventListener('click',()=>requestAnimationFrame(renderScenarioComparison));
+  document.addEventListener('input',event=>{if(event.target.matches('#start,#months,#traffic,#conversion,#check,#cogs,#marketing,#retail,#delivery,[data-base],[data-k]'))requestAnimationFrame(renderScenarioComparison)});
+  renderBaseScenario();renderScenarioComparison();
+});
+</script>
+<script>
+window.addEventListener('load',()=>{
   const navigation=document.querySelector('.tabs');
   const reportsTab=navigation.querySelector('[data-v="model"]');
   if(reportsTab)reportsTab.textContent='Отчеты';
