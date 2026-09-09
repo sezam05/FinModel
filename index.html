@@ -15,6 +15,59 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 </script>
 <script>
 window.addEventListener('load',()=>{
+  requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const dashboardRules={months:{min:1,max:60},traffic:{min:100,max:15000},conversion:{min:5,max:80},check:{min:100,max:2500},cogs:{min:15,max:60},marketing:{min:0,max:100000},retail:{min:0,max:100},delivery:{min:0,max:100}};
+    const baseRules={...dashboardRules,commission:{min:0,max:100},payroll:{min:0},rent:{min:0},utilities:{min:0},admin:{min:0},capex:{min:0},deferral:{min:0,max:30},tax:{min:0,max:100},discount:{min:0},fin:{min:0}};
+    const fixedRules={commission:{min:0,max:1},payroll:{min:0},rent:{min:0},utilities:{min:0},admin:{min:0},capex:{min:0},life:{min:1},tax:{min:0,max:1},deferral:{min:0,max:30},discount:{min:0},fin:{min:0}};
+    const initialFixed={...F};
+    let balancingMix=false;
+    const validation=document.createElement('div');
+    validation.className='model-validation';validation.setAttribute('aria-live','polite');
+    document.getElementById('mix')?.after(validation);
+    const style=document.createElement('style');
+    style.textContent='.model-validation{min-height:18px;margin-top:7px;color:#ffbf3f;font-size:12px;line-height:1.35}.scenario-constraint-note{margin:7px 0 0;color:#94a6be;font-size:11px;line-height:1.35}.field input:invalid,.scenario input:invalid{border-color:#ff7d87}';
+    document.head.append(style);
+    const clamp=(value,rule,fallback=0)=>{const number=Number(value);const safe=Number.isFinite(number)?number:fallback;return Math.min(rule.max??Infinity,Math.max(rule.min??-Infinity,safe))};
+    const writeHint=text=>validation.textContent=text||'';
+    function normalizeFixed(){Object.entries(fixedRules).forEach(([id,rule])=>{const fallback=initialFixed[id]??rule.min??0;F[id]=clamp(F[id],rule,fallback)});}
+    function balanceMix(changedId,showMessage){
+      if(balancingMix)return;balancingMix=true;
+      const source=document.getElementById(changedId),otherId=changedId==='retail'?'delivery':'retail',other=document.getElementById(otherId);
+      if(source&&other){const value=clamp(source.value,dashboardRules[changedId]);source.value=value;other.value=100-value;const slider=other.closest('.slider-field')?.querySelector('.range');if(slider)slider.value=other.value;if(showMessage)writeHint('Микс каналов автоматически сохранен: розница + доставка = 100%.')}
+      balancingMix=false;
+    }
+    function normalizeDashboardInputs(){
+      Object.entries(dashboardRules).forEach(([id,rule])=>{const input=document.getElementById(id);if(!input)return;const value=clamp(input.value,rule);if(String(value)!==input.value)input.value=value;const slider=input.closest('.slider-field')?.querySelector('.range');if(slider)slider.value=input.value;});
+      balanceMix('retail',false);
+    }
+    function applyInputRules(){
+      Object.entries(dashboardRules).forEach(([id,rule])=>{const input=document.getElementById(id);if(!input)return;if(rule.min!==undefined)input.min=rule.min;if(rule.max!==undefined)input.max=rule.max;});
+      document.querySelectorAll('[data-base]').forEach(input=>{const rule=baseRules[input.dataset.base];if(!rule)return;if(rule.min!==undefined)input.min=rule.min;if(rule.max!==undefined)input.max=rule.max;});
+      document.querySelectorAll('[data-k]').forEach(input=>input.min=-100);
+    }
+    function normalizeBaseInput(input){const id=input.dataset.base,rule=baseRules[id];if(!rule)return;const value=clamp(input.value,rule);if(String(value)!==input.value){input.value=value;writeHint('Некорректное значение «'+id+'» приведено к допустимой границе.')}}
+    const rawQ=q;
+    q=function(){normalizeFixed();const model=rawQ(),retail=clamp(model.retail,{min:0,max:1});return {...model,months:clamp(model.months,{min:1,max:60}),traffic:clamp(model.traffic,{min:100,max:15000}),conversion:clamp(model.conversion,{min:.05,max:.8}),check:clamp(model.check,{min:100,max:2500}),cogs:clamp(model.cogs,{min:.15,max:.6}),marketing:clamp(model.marketing,{min:0,max:100000}),retail,delivery:1-retail};};
+    scenario=function(model,key){const variant={...model};D.forEach(([id],index)=>{const input=document.querySelector('[data-k="'+key+'"][data-d="'+id+'"]'),change=Math.max(-100,Number(input?.value)||0);variant[id]=(id in variant?variant[id]:F[id])*(1+change/100)});const first=all(variant)[0];return {rev:first.rev,ebitda:first.ebitda,net:first.net,ncf:first.ncf};};
+    const originalRender=render;
+    render=function(){normalizeDashboardInputs();normalizeFixed();originalRender();applyInputRules()};
+    document.addEventListener('input',event=>{
+      const input=event.target;
+      if(input.id==='retail'||input.id==='delivery')balanceMix(input.id,true);
+      if(input.matches('[data-base]')){normalizeBaseInput(input);if(input.dataset.base==='retail'||input.dataset.base==='delivery')balanceMix(input.dataset.base,true)}
+      if(input.matches('[data-k]')&&Number(input.value)<-100){input.value=-100;writeHint('Отрицательное отклонение затрат ограничено -100%: расход не может стать отрицательным.');}
+    },true);
+    document.addEventListener('change',event=>{
+      const input=event.target;if(dashboardRules[input.id]){const value=clamp(input.value,dashboardRules[input.id]);if(String(value)!==input.value){input.value=value;writeHint('Значение приведено к допустимой границе.')}if(input.id==='retail'||input.id==='delivery')balanceMix(input.id,true)}
+      if(input.matches('[data-base]'))normalizeBaseInput(input);
+    },true);
+    document.querySelector('.scenario-variants p')?.insertAdjacentHTML('afterend','<div class="scenario-constraint-note">Расходы не могут снизиться более чем на 100%. Положительное отклонение не ограничено: это позволяет моделировать стресс-сценарии.</div>');
+    normalizeDashboardInputs();normalizeFixed();render();applyInputRules();
+  }))));
+});
+</script>
+<script>
+window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const mobileStyle=document.createElement('style');
     mobileStyle.textContent='@media(max-width:760px){body{font-size:16px}.shell{padding:16px 12px 28px}.top{display:block}.top h1{font-size:clamp(28px,9vw,36px);line-height:1.08;margin-top:7px}.top p{max-width:none;margin:12px 0 0;font-size:14px;line-height:1.45}.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0}.tabs>span{grid-column:1/-1;width:100%;min-width:0}.tab{width:100%;min-height:44px;padding:9px 7px;font-size:14px;line-height:1.2;white-space:normal}.panel{padding:14px;border-radius:12px}.dash,.grid{gap:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.metric{padding:10px}.metric strong{font-size:18px;line-height:1.15}.metric span{font-size:12px;line-height:1.2}.inputs .group{padding:10px 0}.inputs .field{grid-template-columns:minmax(0,1fr) 132px;gap:8px}.inputs .slider-head{gap:8px}.inputs .slider-head input{flex-basis:100px;width:100px}.inputs .slider-value{gap:4px}.inputs .range-scale{font-size:10px;gap:3px}.inputs input,.inputs select,.scenario input,.sensitivity-control select{font-size:16px}.chart{height:250px}.cash-chart{height:280px}.payback-bars{height:290px}.chart-top{display:block}.chart-total{width:100%;min-width:0;margin-top:9px}.scenario-heading,.sensitivity-heading{display:block}.scenario-heading .note{margin-top:8px}.scenario-comparison .scenario-chart{height:260px}.scenario-table-wrap,.sensitivity-table-wrap,.table{overflow-x:auto;-webkit-overflow-scrolling:touch}.scenario-results{min-width:820px}.scenario-results th,.scenario-results td{padding:8px;font-size:12px}.scenario-top-row{gap:12px}.scenario-variants .scenario th,.scenario-variants .scenario td{padding:6px 4px}.scenario-base-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:7px 12px}.scenario-base-overview span{min-width:0;grid-template-columns:1fr;gap:2px;white-space:normal}.scenario-base-overview b{overflow-wrap:anywhere}.model{min-width:860px}.model th,.model td{padding:8px;font-size:12px}.note-page{gap:12px}.note-summary{gap:8px}.note-card{padding:12px}.note-card strong{font-size:18px}.note-grid{gap:12px}.note-actions{display:grid;grid-template-columns:1fr}.note-action{min-height:42px;font-size:14px}.note-table{min-width:560px}.note-section{overflow-x:auto}.sensitivity-title h2{font-size:20px}.sensitivity-title p{font-size:14px}.sensitivity-help-toggle{width:100%;min-height:42px;margin-top:10px}.sensitivity-steps{gap:8px}.sensitivity-step{min-height:0;padding:11px 32px 11px 11px;font-size:13px}.sensitivity-kpis{gap:8px}.sensitivity-kpi{padding:12px}.sensitivity-kpi strong{font-size:18px}.sensitivity-sections{gap:12px}.sensitivity-settings{gap:9px}.sensitivity-check{min-height:40px;font-size:13px}.sensitivity-curves{height:250px}.sensitivity-matrix{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}.sensitivity-matrix .sensitivity-cell{min-height:50px}.tornado-row{grid-template-columns:78px minmax(0,1fr) minmax(0,1fr);gap:4px}.tornado-value{display:none}.sensitivity-legend{flex-wrap:wrap;gap:7px 12px}.help-popover{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;max-width:none;z-index:80}.chart-tooltip{max-width:calc(100vw - 24px);font-size:12px}}@media(max-width:390px){.tabs{grid-template-columns:1fr}.tabs>span{grid-column:auto}.metrics{grid-template-columns:1fr 1fr}.metric strong{font-size:17px}.inputs .field{grid-template-columns:minmax(0,1fr) 118px}.inputs .slider-head input{flex-basis:90px;width:90px}.scenario-base-overview{grid-template-columns:1fr}.scenario-comparison .scenario-chart{height:235px}.chart{height:230px}.cash-chart{height:250px}.payback-bars{height:270px}}';
